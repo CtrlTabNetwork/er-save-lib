@@ -547,14 +547,26 @@ pub(crate) struct EquippedItemsItemIds {
 }
 
 impl EquippedItemsItemIds {
-	pub const fn equipped_item_ids(&self) -> [u32; 6] {
+	pub const fn equipped_item_ids(&self) -> [u32; 18] {
 		[
 			self.left_hand_armament1,
-			self.right_hand_armament1,
-			self.left_hand_armament2,
-			self.right_hand_armament2,
-			self.left_hand_armament3,
-			self.right_hand_armament3,
+            self.right_hand_armament1,
+            self.left_hand_armament2,
+            self.right_hand_armament2,
+            self.left_hand_armament3,
+            self.right_hand_armament3,
+            self.arrows1,
+            self.bolts1,
+            self.arrows2,
+            self.bolts2,
+            self.head,
+            self.chest,
+            self.arms,
+            self.legs,
+            self.talisman1,
+            self.talisman2,
+            self.talisman3,
+            self.talisman4,
 		]
 	}
 }
@@ -588,7 +600,8 @@ pub(crate) struct EquppedItemsGaitemHandles {
 }
 
 impl EquppedItemsGaitemHandles {
-	pub const fn equipped_handles(&self) -> [u32; 18] {
+    #[allow(unused)]
+    pub const fn equipped_handles(&self) -> [u32; 18] {
 		[
 			self.left_hand_armament1,
 			self.right_hand_armament1,
@@ -637,30 +650,6 @@ pub(crate) struct InventoryItem {
     #[deku(assert = "*quantity <= 999")]
     pub(crate) quantity: u32,
     pub(crate) aqcuistion_index: u32,
-}
-
-impl Inventory {
-	pub fn sanitize_inventory(&mut self) {
-		for it in &mut self.common_items {
-			if it.gaitem_handle == 0 {
-				it.quantity = 0;
-				it.aqcuistion_index = 0;
-			} else if it.quantity > 999 {
-				it.quantity = 999;
-			}
-		}
-		for it in &mut self.key_items {
-			if it.gaitem_handle == 0 {
-				it.quantity = 0;
-				it.aqcuistion_index = 0;
-			} else if it.quantity > 999 {
-				it.quantity = 999;
-			}
-		}
-
-		self.common_item_count = self.common_items.iter().filter(|x| x.gaitem_handle != 0).count() as u32;
-		self.key_item_count = self.key_items.iter().filter(|x| x.gaitem_handle != 0).count() as u32;
-	}
 }
 
 // Equipped Spells
@@ -769,6 +758,7 @@ pub(crate) struct EquippedArmamentsAndItems {
 }
 
 impl EquippedArmamentsAndItems {
+    #[allow(unused)]
 	pub const fn all(&self) -> [u32; 34] {
 		[
 			self.left_hand_armament1,
