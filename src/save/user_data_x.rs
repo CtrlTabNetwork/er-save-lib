@@ -474,6 +474,31 @@ pub(crate) struct EquippedItemsEquipIndex {
     unk0x54: u32,
 }
 
+impl EquippedItemsEquipIndex {
+	pub const fn equip_indexes(&self) -> [u32; 18] {
+		[
+			self.left_hand_armament1,
+			self.right_hand_armament1,
+			self.left_hand_armament2,
+			self.right_hand_armament2,
+			self.left_hand_armament3,
+			self.right_hand_armament3,
+			self.arrows1,
+			self.bolts1,
+			self.arrows2,
+			self.bolts2,
+			self.head,
+			self.chest,
+			self.arms,
+			self.legs,
+			self.talisman1,
+			self.talisman2,
+			self.talisman3,
+			self.talisman4
+		]
+	}
+}
+
 // Active weapon slot, arrow and bolt
 #[derive(PartialEq, Debug, DekuRead, DekuWrite, Clone)]
 #[deku(endian = "endian", ctx = "endian: Endian")]
@@ -521,6 +546,19 @@ pub(crate) struct EquippedItemsItemIds {
     pub(crate) unk0x54: u32,
 }
 
+impl EquippedItemsItemIds {
+	pub const fn equipped_item_ids(&self) -> [u32; 6] {
+		[
+			self.left_hand_armament1,
+			self.right_hand_armament1,
+			self.left_hand_armament2,
+			self.right_hand_armament2,
+			self.left_hand_armament3,
+			self.right_hand_armament3,
+		]
+	}
+}
+
 // Equipped Items GaitemHandles
 #[derive(PartialEq, Debug, DekuRead, DekuWrite, Clone)]
 #[deku(endian = "endian", ctx = "endian: Endian")]
@@ -549,6 +587,31 @@ pub(crate) struct EquppedItemsGaitemHandles {
     unk0x54: u32,
 }
 
+impl EquppedItemsGaitemHandles {
+	pub const fn equipped_handles(&self) -> [u32; 18] {
+		[
+			self.left_hand_armament1,
+			self.right_hand_armament1,
+			self.left_hand_armament2,
+			self.right_hand_armament2,
+			self.left_hand_armament3,
+			self.right_hand_armament3,
+			self.arrows1,
+			self.bolts1,
+			self.arrows2,
+			self.bolts2,
+			self.head,
+			self.chest,
+			self.arms,
+			self.legs,
+			self.talisman1,
+			self.talisman2,
+			self.talisman3,
+			self.talisman4,
+		]
+	}
+}
+
 // Inventory (Held and Storage Box)
 #[derive(PartialEq, Debug, DekuRead, DekuWrite, Clone)]
 #[deku(
@@ -567,13 +630,37 @@ pub(crate) struct Invenotry {
     pub(crate) equip_index_counter: u32,
     pub(crate) aquistion_index_counter: u32,
 }
-#[derive(PartialEq, Debug, DekuRead, DekuWrite, Clone)]
+#[derive(PartialEq, Debug, Default, DekuRead, DekuWrite, Clone, Copy)]
 #[deku(endian = "endian", ctx = "endian: Endian")]
 pub(crate) struct InvenotryItem {
     pub(crate) gaitem_handle: u32,
     #[deku(assert = "*quantity <= 999")]
     pub(crate) quantity: u32,
     pub(crate) aqcuistion_index: u32,
+}
+
+impl Invenotry {
+	pub fn sanitize_inventory(&mut self) {
+		for it in &mut self.common_items {
+			if it.gaitem_handle == 0 {
+				it.quantity = 0;
+				it.aqcuistion_index = 0;
+			} else if it.quantity > 999 {
+				it.quantity = 999;
+			}
+		}
+		for it in &mut self.key_items {
+			if it.gaitem_handle == 0 {
+				it.quantity = 0;
+				it.aqcuistion_index = 0;
+			} else if it.quantity > 999 {
+				it.quantity = 999;
+			}
+		}
+
+		self.common_item_count = self.common_items.iter().filter(|x| x.gaitem_handle != 0).count() as u32;
+		self.key_item_count = self.key_items.iter().filter(|x| x.gaitem_handle != 0).count() as u32;
+	}
 }
 
 // Equipped Spells
@@ -605,6 +692,7 @@ pub(crate) struct EquippedItems {
     unk0x84: u32,
     unk0x88: u32,
 }
+
 #[derive(PartialEq, Debug, DekuRead, DekuWrite, Clone)]
 #[deku(endian = "endian", ctx = "endian: Endian")]
 pub(crate) struct EquippedItem {
@@ -678,6 +766,47 @@ pub(crate) struct EquippedArmamentsAndItems {
     pub(crate) pouch5: u32,
     pub(crate) pouch6: u32,
     unk0x98: u32,
+}
+
+impl EquippedArmamentsAndItems {
+	pub const fn all(&self) -> [u32; 34] {
+		[
+			self.left_hand_armament1,
+			self.right_hand_armament1,
+			self.left_hand_armament2,
+			self.right_hand_armament2,
+			self.left_hand_armament3,
+			self.right_hand_armament3,
+			self.arrows1,
+			self.bolts1,
+			self.arrows2,
+			self.bolts2,
+			self.head,
+			self.chest,
+			self.arms,
+			self.legs,
+			self.talisman1,
+			self.talisman2,
+			self.talisman3,
+			self.talisman4,
+			self.quickitem1,
+			self.quickitem2,
+			self.quickitem3,
+			self.quickitem4,
+			self.quickitem5,
+			self.quickitem6,
+			self.quickitem7,
+			self.quickitem8,
+			self.quickitem9,
+			self.quickitem10,
+			self.pouch1,
+			self.pouch2,
+			self.pouch3,
+			self.pouch4,
+			self.pouch5,
+			self.pouch6
+		]
+	}
 }
 
 // Equipped Physics

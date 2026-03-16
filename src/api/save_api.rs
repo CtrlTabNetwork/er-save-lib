@@ -1,14 +1,9 @@
 use std::{
-    collections::{BTreeMap, HashMap},
-    num::ParseIntError,
-    path::Path,
-    sync::LazyLock,
+    collections::{BTreeMap, HashMap}, num::ParseIntError, path::Path, sync::LazyLock
 };
 
 use crate::{
-    regulation::{params::param_structs, regulation::RegulationParseError},
-    save::{save::SaveParseError, user_data_10::Profile, user_data_x::UserDataX},
-    Save,
+    Save, regulation::{params::param_structs, regulation::RegulationParseError}, save::{save::SaveParseError, user_data_10::Profile, user_data_x::{InvenotryItem, UserDataX}}
 };
 
 use super::{
@@ -478,14 +473,62 @@ impl SaveApi {
         Ok(())
     }
 
-    pub fn get_inventory(
-        &self,
-        index: usize,
-        storage_type: StorageType,
-        storage_item_type: StorageItemType,
-    ) -> Result<Vec<Item>, SaveApiError> {
-        // Get save item list
-        let items = match (&storage_type, &storage_item_type) {
+	fn item_from_raw(&self, index: usize, inventory_index: usize, storage_item_type: StorageItemType, storage_type: StorageType, item: InvenotryItem) -> Result<Item, SaveApiError> {
+		let item_type = ItemType::from_gaitem_id(item.gaitem_handle)?;
+		let gaitem_handle = item.gaitem_handle;
+		let item_id = self.item_id_from_gaitem_handle(index, item.gaitem_handle)?;
+		let text_repo_id = Self::text_repo_id(item_id, &item_type);
+		let item_name =
+			if let Some(item_name) = Self::get_item_name(text_repo_id, &item_type) {
+				item_name
+			} else {
+				format!("Unk_{}", item_id)
+			};
+		let equip_index = match &storage_item_type {
+			StorageItemType::Regular => match &storage_type {
+				StorageType::Held => KEY_ITEM_CAPACITY.0 + inventory_index,
+				StorageType::StorageBox => KEY_ITEM_CAPACITY.1 + inventory_index,
+			},
+			StorageItemType::Key => 0,
+		};
+		let quantity = item.quantity;
+		let aqcuistion_index = item.aqcuistion_index;
+		let is_dlc_item = Self::is_dlc_item(item_id, &item_type);
+
+		Ok(Item {
+			item_type,
+			gaitem_handle,
+			item_id,
+			item_name,
+			quantity,
+			aqcuistion_index,
+			equip_index,
+			is_dlc_item,
+			inventory_index
+		})
+	}
+
+	pub(crate) fn get_item_list_mut(&mut self, index: usize, storage_type: StorageType, storage_item_type: StorageItemType) -> &mut Vec<InvenotryItem> {
+		match (&storage_type, &storage_item_type) {
+            (StorageType::Held, StorageItemType::Regular) => {
+                &mut self.raw.user_data_x[index].inventory_held.common_items
+            }
+            (StorageType::Held, StorageItemType::Key) => {
+                &mut self.raw.user_data_x[index].inventory_held.key_items
+            }
+            (StorageType::StorageBox, StorageItemType::Regular) => {
+                &mut self.raw.user_data_x[index]
+                    .inventory_storage_box
+                    .common_items
+            }
+            (StorageType::StorageBox, StorageItemType::Key) => {
+                &mut self.raw.user_data_x[index].inventory_storage_box.key_items
+            }
+        }
+	}
+
+	pub(crate) fn get_item_list(&self, index: usize, storage_type: StorageType, storage_item_type: StorageItemType) -> &Vec<InvenotryItem> {
+		match (&storage_type, &storage_item_type) {
             (StorageType::Held, StorageItemType::Regular) => {
                 &self.raw.user_data_x[index].inventory_held.common_items
             }
@@ -500,48 +543,66 @@ impl SaveApi {
             (StorageType::StorageBox, StorageItemType::Key) => {
                 &self.raw.user_data_x[index].inventory_storage_box.key_items
             }
-        };
+        }
+	}
 
+	#[allow(unused)]
+	pub(crate) fn get_item_count_mut(&mut self, index: usize, storage_type: StorageType, storage_item_type: StorageItemType) -> &mut u32 {
+		match (&storage_type, &storage_item_type) {
+			(StorageType::Held, StorageItemType::Regular) => {
+				&mut self.raw.user_data_x[index].inventory_held.common_item_count
+			}
+			(StorageType::Held, StorageItemType::Key) => {
+				&mut self.raw.user_data_x[index].inventory_held.key_item_count
+			}
+			(StorageType::StorageBox, StorageItemType::Regular) => {
+				&mut self.raw.user_data_x[index]
+					.inventory_storage_box
+					.common_item_count
+			}
+			(StorageType::StorageBox, StorageItemType::Key) => {
+				&mut self.raw.user_data_x[index]
+					.inventory_storage_box
+					.key_item_count
+			}
+		}
+	}
+
+	pub fn remove_item(&mut self, index: usize, storage_type: StorageType, storage_item_type: StorageItemType, item: &Item) -> () {
+		let list = self.get_item_list_mut(index, storage_type, storage_item_type);
+
+		// list.retain(|inventory_item| inventory_item.gaitem_handle != item.gaitem_handle);
+		// list.push(InvenotryItem::default());
+
+		// *self.get_item_count_mut(index, storage_type, storage_item_type) -= 1;
+
+		let item = list.iter_mut()
+			.find(|inventory_item| inventory_item.gaitem_handle == item.gaitem_handle);
+
+		match item {
+			Some(item) => *item = InvenotryItem::default(),
+			None => {}
+		};
+	}
+
+	pub fn sanitize_inventories(&mut self, index: usize) -> () {
+		self.raw.user_data_x[index].inventory_held.sanitize_inventory();
+		self.raw.user_data_x[index].inventory_storage_box.sanitize_inventory();
+	}
+
+    pub fn get_inventory(
+        &self,
+        index: usize,
+        storage_type: StorageType,
+        storage_item_type: StorageItemType,
+    ) -> Result<Vec<Item>, SaveApiError> {
         // Create item list
-        let items: Result<Vec<Item>, SaveApiError> = items
+        self.get_item_list(index, storage_type, storage_item_type)
             .iter()
             .enumerate()
-            .map(|(inventory_index, item)| {
-                let item_type = ItemType::from_gaitem_id(item.gaitem_handle)?;
-                let gaitem_handle = item.gaitem_handle;
-                let item_id = self.item_id_from_gaitem_handle(index, item.gaitem_handle)?;
-                let text_repo_id = Self::text_repo_id(item_id, &item_type);
-                let item_name =
-                    if let Some(item_name) = Self::get_item_name(text_repo_id, &item_type) {
-                        item_name
-                    } else {
-                        format!("Unk_{}", item_id)
-                    };
-                let equip_index = match &storage_item_type {
-                    StorageItemType::Regular => match &storage_type {
-                        StorageType::Held => KEY_ITEM_CAPACITY.0 + inventory_index,
-                        StorageType::StorageBox => KEY_ITEM_CAPACITY.1 + inventory_index,
-                    },
-                    StorageItemType::Key => 0,
-                };
-                let quantity = item.quantity;
-                let aqcuistion_index = item.aqcuistion_index;
-                let is_dlc_item = Self::is_dlc_item(item_id, &item_type);
-
-                Ok(Item {
-                    item_type,
-                    gaitem_handle,
-                    item_id,
-                    item_name,
-                    quantity,
-                    aqcuistion_index,
-                    equip_index,
-                    is_dlc_item,
-                })
-            })
-            .collect();
-
-        items
+            .map(|(inventory_index, item)| 
+				self.item_from_raw(index, inventory_index, storage_item_type, storage_type, *item))
+            .collect()
     }
 
     fn item_id_from_gaitem_handle(
@@ -624,6 +685,13 @@ impl SaveApi {
         false
     }
 
+    pub fn is_equipped(&self, index: usize, item: &Item) -> bool {
+        self.raw.user_data_x[index].equipped_armaments_and_items.all().contains(&item.gaitem_handle)
+			|| self.raw.user_data_x[index].equipped_items_item_id.equipped_item_ids().contains(&item.item_id)
+			|| self.raw.user_data_x[index].equipped_items_gaitem_handle.equipped_handles().contains(&item.gaitem_handle)
+			|| self.raw.user_data_x[index].equipped_items_equip_index.equip_indexes().contains(&(item.equip_index as u32))
+    }
+    
     pub fn next_equip_index(
         &self,
         index: usize,
@@ -738,21 +806,21 @@ impl SaveApi {
 
     pub fn add_item_to_inventory(
         &mut self,
-        index: usize,
-        item_id: u32,
-        item_type: ItemType,
-        storage_type: &StorageType,
+        _index: usize,
+        _item_id: u32,
+        _item_type: ItemType,
+        _storage_type: &StorageType,
     ) -> Result<(), SaveApiError> {
-        Ok(())
+		todo!("unimplemented")
     }
 
     pub fn add_weapon_to_inventory(
         &mut self,
-        index: usize,
-        weapon_id: u32,
-        aow_id: Option<u32>,
-        storage_type: &StorageType,
+        _index: usize,
+        _weapon_id: u32,
+        _aow_id: Option<u32>,
+        _storage_type: &StorageType,
     ) -> Result<(), SaveApiError> {
-        Ok(())
+		todo!("unimplemented")
     }
 }

@@ -3,14 +3,14 @@ use crate::SaveApiError;
 pub const COMMON_ITEM_CAPACITY: (usize, usize) = (2688, 1920);
 pub const KEY_ITEM_CAPACITY: (usize, usize) = (384, 128);
 
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Clone, Copy)]
 pub enum StorageType {
     #[default]
     Held,
     StorageBox,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub enum StorageItemType {
     #[default]
     Regular,
@@ -64,4 +64,5 @@ pub struct Item {
     pub equip_index: usize,
     pub aqcuistion_index: u32,
     pub is_dlc_item: bool,
+	pub inventory_index: usize,
 }
