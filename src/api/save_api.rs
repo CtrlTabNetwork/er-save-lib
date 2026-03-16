@@ -3,7 +3,7 @@ use std::{
 };
 
 use crate::{
-    Save, regulation::{params::param_structs, regulation::RegulationParseError}, save::{save::SaveParseError, user_data_10::Profile, user_data_x::{InvenotryItem, UserDataX}}
+    Save, regulation::{params::param_structs, regulation::RegulationParseError}, save::{save::SaveParseError, user_data_10::Profile, user_data_x::{InventoryItem, UserDataX}}
 };
 
 use super::{
@@ -473,7 +473,7 @@ impl SaveApi {
         Ok(())
     }
 
-	fn item_from_raw(&self, index: usize, inventory_index: usize, storage_item_type: StorageItemType, storage_type: StorageType, item: InvenotryItem) -> Result<Item, SaveApiError> {
+	fn item_from_raw(&self, index: usize, inventory_index: usize, storage_item_type: StorageItemType, storage_type: StorageType, item: InventoryItem) -> Result<Item, SaveApiError> {
 		let item_type = ItemType::from_gaitem_id(item.gaitem_handle)?;
 		let gaitem_handle = item.gaitem_handle;
 		let item_id = self.item_id_from_gaitem_handle(index, item.gaitem_handle)?;
@@ -508,7 +508,7 @@ impl SaveApi {
 		})
 	}
 
-	pub(crate) fn get_item_list_mut(&mut self, index: usize, storage_type: StorageType, storage_item_type: StorageItemType) -> &mut Vec<InvenotryItem> {
+	pub(crate) fn get_item_list_mut(&mut self, index: usize, storage_type: StorageType, storage_item_type: StorageItemType) -> &mut Vec<InventoryItem> {
 		match (&storage_type, &storage_item_type) {
             (StorageType::Held, StorageItemType::Regular) => {
                 &mut self.raw.user_data_x[index].inventory_held.common_items
@@ -527,7 +527,7 @@ impl SaveApi {
         }
 	}
 
-	pub(crate) fn get_item_list(&self, index: usize, storage_type: StorageType, storage_item_type: StorageItemType) -> &Vec<InvenotryItem> {
+	pub(crate) fn get_item_list(&self, index: usize, storage_type: StorageType, storage_item_type: StorageItemType) -> &Vec<InventoryItem> {
 		match (&storage_type, &storage_item_type) {
             (StorageType::Held, StorageItemType::Regular) => {
                 &self.raw.user_data_x[index].inventory_held.common_items
@@ -580,7 +580,7 @@ impl SaveApi {
 			.find(|inventory_item| inventory_item.gaitem_handle == item.gaitem_handle);
 
 		match item {
-			Some(item) => *item = InvenotryItem::default(),
+			Some(item) => *item = InventoryItem::default(),
 			None => {}
 		};
 	}

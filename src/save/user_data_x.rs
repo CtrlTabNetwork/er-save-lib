@@ -41,7 +41,7 @@ pub(crate) struct UserDataX {
     pub(crate) equipped_items_item_id: EquippedItemsItemIds,
     pub(crate) equipped_items_gaitem_handle: EquppedItemsGaitemHandles,
     #[deku(ctx = "0xa80, 0x180")]
-    pub(crate) inventory_held: Invenotry,
+    pub(crate) inventory_held: Inventory,
     pub(crate) equipped_spells: EquippedSpells,
     pub(crate) equipped_items: EquippedItems,
     pub(crate) equipped_gestures: EquippedGestures,
@@ -55,7 +55,7 @@ pub(crate) struct UserDataX {
 
     // Inventory Data (Storage Box)
     #[deku(ctx = "0x780, 0x80")]
-    pub(crate) inventory_storage_box: Invenotry,
+    pub(crate) inventory_storage_box: Inventory,
 
     // Gestures
     pub(crate) gestures: Gestures,
@@ -618,28 +618,28 @@ impl EquppedItemsGaitemHandles {
     endian = "endian",
     ctx = "endian: Endian, common_items_capacity: u32, key_items_capacity: u32"
 )]
-pub(crate) struct Invenotry {
+pub(crate) struct Inventory {
     #[deku(assert = "*common_item_count <= common_items_capacity")]
     pub(crate) common_item_count: u32,
     #[deku(count = "common_items_capacity")]
-    pub(crate) common_items: Vec<InvenotryItem>,
+    pub(crate) common_items: Vec<InventoryItem>,
     #[deku(assert = "*key_item_count <= key_items_capacity")]
     pub(crate) key_item_count: u32,
     #[deku(count = "key_items_capacity")]
-    pub(crate) key_items: Vec<InvenotryItem>,
+    pub(crate) key_items: Vec<InventoryItem>,
     pub(crate) equip_index_counter: u32,
     pub(crate) aquistion_index_counter: u32,
 }
 #[derive(PartialEq, Debug, Default, DekuRead, DekuWrite, Clone, Copy)]
 #[deku(endian = "endian", ctx = "endian: Endian")]
-pub(crate) struct InvenotryItem {
+pub(crate) struct InventoryItem {
     pub(crate) gaitem_handle: u32,
     #[deku(assert = "*quantity <= 999")]
     pub(crate) quantity: u32,
     pub(crate) aqcuistion_index: u32,
 }
 
-impl Invenotry {
+impl Inventory {
 	pub fn sanitize_inventory(&mut self) {
 		for it in &mut self.common_items {
 			if it.gaitem_handle == 0 {
