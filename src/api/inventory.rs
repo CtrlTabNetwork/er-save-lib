@@ -17,7 +17,7 @@ pub enum StorageItemType {
     Key,
 }
 
-#[derive(Default, Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Clone, Eq, Hash)]
 pub enum ItemType {
     #[default]
     None,
@@ -54,7 +54,7 @@ impl ItemType {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Item {
     pub item_type: ItemType,
     pub gaitem_handle: u32,

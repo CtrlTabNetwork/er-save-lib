@@ -473,6 +473,16 @@ impl SaveApi {
         Ok(())
     }
 
+    fn compute_equip_index(inventory_index: usize, storage_item_type: StorageItemType, storage_type: StorageType) -> usize {
+        match &storage_item_type {
+			StorageItemType::Regular => match &storage_type {
+				StorageType::Held => KEY_ITEM_CAPACITY.0 + inventory_index,
+				StorageType::StorageBox => KEY_ITEM_CAPACITY.1 + inventory_index,
+			},
+			StorageItemType::Key => 0,
+		}
+    }
+
 	fn item_from_raw(&self, index: usize, inventory_index: usize, storage_item_type: StorageItemType, storage_type: StorageType, item: InventoryItem) -> Result<Item, SaveApiError> {
 		let item_type = ItemType::from_gaitem_id(item.gaitem_handle)?;
 		let gaitem_handle = item.gaitem_handle;
@@ -484,13 +494,7 @@ impl SaveApi {
 			} else {
 				format!("Unk_{}", item_id)
 			};
-		let equip_index = match &storage_item_type {
-			StorageItemType::Regular => match &storage_type {
-				StorageType::Held => KEY_ITEM_CAPACITY.0 + inventory_index,
-				StorageType::StorageBox => KEY_ITEM_CAPACITY.1 + inventory_index,
-			},
-			StorageItemType::Key => 0,
-		};
+		let equip_index = Self::compute_equip_index(inventory_index, storage_item_type, storage_type);
 		let quantity = item.quantity;
 		let aqcuistion_index = item.aqcuistion_index;
 		let is_dlc_item = Self::is_dlc_item(item_id, &item_type);
@@ -577,17 +581,16 @@ impl SaveApi {
 		// *self.get_item_count_mut(index, storage_type, storage_item_type) -= 1;
 
 		let item = list.iter_mut()
-			.find(|inventory_item| inventory_item.gaitem_handle == item.gaitem_handle);
+            .enumerate()
+            .map(|(inventory_index, inventory_item)| 
+                (inventory_item, Self::compute_equip_index(inventory_index, storage_item_type, storage_type)))
+			.find(|pair| 
+                pair.0.gaitem_handle == item.gaitem_handle && pair.1 == item.equip_index);
 
 		match item {
-			Some(item) => *item = InventoryItem::default(),
+			Some(item) => *(item.0) = InventoryItem::default(),
 			None => {}
 		};
-	}
-
-	pub fn sanitize_inventories(&mut self, index: usize) -> () {
-		self.raw.user_data_x[index].inventory_held.sanitize_inventory();
-		self.raw.user_data_x[index].inventory_storage_box.sanitize_inventory();
 	}
 
     pub fn get_inventory(
@@ -685,11 +688,12 @@ impl SaveApi {
         false
     }
 
+    pub fn is_equipped_item_id(&self, index: usize, item: &Item) -> bool {
+        self.raw.user_data_x[index].equipped_items_item_id.equipped_item_ids().contains(&item.item_id)
+    }
+
     pub fn is_equipped(&self, index: usize, item: &Item) -> bool {
-        self.raw.user_data_x[index].equipped_armaments_and_items.all().contains(&item.gaitem_handle)
-			|| self.raw.user_data_x[index].equipped_items_item_id.equipped_item_ids().contains(&item.item_id)
-			|| self.raw.user_data_x[index].equipped_items_gaitem_handle.equipped_handles().contains(&item.gaitem_handle)
-			|| self.raw.user_data_x[index].equipped_items_equip_index.equip_indexes().contains(&(item.equip_index as u32))
+		self.raw.user_data_x[index].equipped_items_equip_index.equip_indexes().contains(&(item.equip_index as u32))
     }
     
     pub fn next_equip_index(
